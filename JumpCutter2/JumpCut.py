@@ -359,10 +359,10 @@ def ffmpeg和pyav综合处理视频流(文件, 临时视频文件, 片段列表,
     # print(process2Command)
     process2 = subprocess.Popen(process2Command, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-    帧率 = float(inputVideoStream.framerate)
+    帧率 = float(inputVideoStream.average_rate)
     原始总帧数 = inputVideoStream.frames
     if 原始总帧数 == 0:
-        原始总帧数 = int(得到输入视频时长(文件) * 平均帧率)
+        原始总帧数 = int(inputVideoStream.duration * 平均帧率)
     总帧数 = 计算总共帧数(片段列表, 片段速度)
 
     print(f'输出视频总帧数：{int(总帧数)}，输出后时长：{秒数转时分秒(int(总帧数 / 平均帧率))}')
