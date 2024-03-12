@@ -20,7 +20,8 @@ import sys
 import tempfile
 from pathlib import Path
 from . import JumpCut
-
+from glob import glob
+import re
 # 这里从相对路径导入，在被 pyinstaller 打包时，需要换成绝对路径
 
 def main():
@@ -50,7 +51,7 @@ def main():
     parser.add_argument('--suffix', metavar='Suffix', type=str, default='_JumpCut', help='处理后生成的文件名后缀')
     parser.add_argument('--silence-speed', metavar='Speed', type=float, default=8.0, help='静音片段速度')
     parser.add_argument('--sounded-speed', metavar='Speed', type=float, default=1.0, help='有声片段速度')
-    parser.add_argument('--buffer-frame', metavar='Number', type=int, default=4, help='片段间缓冲帧数')
+    parser.add_argument('--buffer-frame', metavar='Number', type=int, default=2, help='片段间缓冲帧数')
     parser.add_argument('--threshold', metavar='Threshold', type=float, default=0.04, help='声音检测相对阈值')
     parser.add_argument('--codec', metavar='Codec', type=str, default='libx264', help='视频编码器')
     parser.add_argument('--crf', metavar='Number', type=float, default=23.0, help='视频质量crf参数')
@@ -65,7 +66,7 @@ def main():
     处理(args)
 
     if 没有参数:
-        input('\n所有任务处理完毕，按下回车结束程序')
+        print('\n所有任务处理完毕，结束程序')
 
 def 得到参数(args):
     args.silence_speed = 得到静音片段速度(args.silence_speed)
@@ -248,12 +249,31 @@ def 处理(参数:argparse.ArgumentParser):
         分轨器 = Separator(f'spleeter:{spleeter使用模型名称}', multiprocess=False)
 
     # 依次处理这些视频
-    for index, File in enumerate(参数.File):
-        print(f'总共有 {len(参数.File)} 个文件需要处理，正在处理第 {index + 1} 个：{File}')
-        处理文件(File, 参数, 分轨器)
+    for index, f in enumerate(参数.File):
+        print(f'总共有 {len(参数.File)} 个文件需要处理，正在处理第 {index + 1} 个：{f}')
+        if os.path.isdir(f):
+            if re.match(".*_JumpCut.*",f):
+                continue #跳过
+            print("输入的文件是路径，开始遍历处理")
+            for _file in glob(os.path.join(f, "**/*.mp4"), recursive=True):
+                处理文件(_file, 参数, 分轨器)
+        else:
+            处理文件(f, 参数, 分轨器)
 
 def 处理文件(file, 参数:argparse.ArgumentParser, 分轨器):
+    new_filename = file.replace("#","")
+    os.rename(file, new_filename) #删除文件名里面的井号
+    file = new_filename
+    print(f"开始处理：{file}")
     输出文件 = os.path.splitext(file)[0] + 参数.suffix + os.path.splitext(file)[1]
+    print(f"输出文件为：{输出文件}")
+    if os.path.splitext(file)[0].endswith(参数.suffix):
+        print("文件已处理，跳过。")
+        return
+    elif os.path.exists(输出文件): #如果输入文件是已经处理过的，或者输出文件已经存在
+        print("文件已处理，跳过并删除源文件")
+        os.remove(file)
+        return
     临时文件夹 = 得到临时文件夹(输出文件)
     JumpCut.跳剪(file,
                  输出文件=输出文件,
@@ -267,6 +287,5 @@ def 处理文件(file, 参数:argparse.ArgumentParser, 分轨器):
                  辅助音频文件=参数.aux,
                  使用spleeter=分轨器,
                  临时文件夹=临时文件夹)
-
 if __name__ == '__main__':
     main()

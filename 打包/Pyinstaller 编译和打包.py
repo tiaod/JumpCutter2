@@ -252,7 +252,7 @@ else: # 非虚拟环境打包
 命令参数 = shlex.split(命令)
 subprocess.run(命令参数)
 os.remove(f'{临时源文件夹}/{启动器文件名}') # 删除 launcher.py
-rmtree(f'{临时源文件夹}/__pycache__')
+#rmtree(f'{临时源文件夹}/__pycache__')
 if 使用虚拟环境:
     if 源码分开打包:
         move(f'{临时源文件夹}/__main__.py', f'{临时源文件夹}/main.py')

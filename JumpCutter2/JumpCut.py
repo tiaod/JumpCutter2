@@ -26,7 +26,7 @@ import shlex
 from shutil import rmtree, copy
 from pathlib import Path
 from pprint import pprint
-
+from tqdm import tqdm
 import numpy as np
 from audiotsm import phasevocoder
 from audiotsm.io.wav import WavReader, WavWriter
@@ -114,7 +114,7 @@ def 查找可执行程序(program):
 
 # @profile()
 def 由spleeter得到辅助音频数据(音频文件, 分轨器, 临时文件夹):
-    print('正在使用 spleeter 分离音轨')
+    # print('正在使用 spleeter 分离音轨')
 
     分轨器.separate_to_file(音频文件, Path(临时文件夹))
     采样率, 音频数据 = wavfile.read(Path(临时文件夹)/Path(音频文件).stem/'vocals.wav')
@@ -144,8 +144,9 @@ def 由spleeter得到分析音频(输入文件, 输出文件, 分轨器):
         片段路径前缀 = (输入文件Path.parent / (输入文件Path.stem)).as_posix()
 
         index = 0
-        for i in range(片段数):
-            print(f'\n总共有 {片段数} 个音频片段需要 spleeter 处理，正在处理第 {i + 1} 个...')
+        print(f'\n总共有 {片段数} 个音频片段需要 spleeter 处理...')
+        for i in tqdm(range(片段数), leave=False):
+
             start = index
             index = end = min(index + (片段时长 * 采样率), 长度 - 1)
 
@@ -304,7 +305,7 @@ def 处理音频(音频文件, 片段列表, 视频帧率, 静音片段速度, �
         # 根据已衔接长度决定是否将已有总片段写入文件，再新建一个用于衔接的片段
         # print('本音频片段已累计时长：%ss' % str(len(输出音频的数据) / 采样率) )
         # print('输出音频加的帧数: %s' % str(处理后又补齐的音频的采样数 / 每帧采样数) )
-        # print(f'\n\nindex: {index}; 总：{总片段数量}\n\n')
+        # print(f'\n\nindex: {index}; 总：{总片段数量}\n\n')正在使用 spleeter 分离音轨
         if len(输出音频的数据) >= 采样率 * 60 * 10 or (index + 1) == 总片段数量:
             tempWavClip = tempfile.mkstemp(dir=临时文件夹, prefix='AudioClipForNewVideo_', suffix='.wav')
             os.close(tempWavClip[0])
@@ -314,7 +315,7 @@ def 处理音频(音频文件, 片段列表, 视频帧率, 静音片段速度, �
     # print(f'音频总帧数：{len(输出音频的数据) / 采样率 * 视频帧率}')
     # print(f'总共超出帧数：{超出 / 采样率 * 视频帧率}')
     concat记录文件.close()
-    print('子线程中的音频文件处理完毕，只待视频流输出完成了')
+    # print('子线程中的音频文件处理完毕，只待视频流输出完成了')
     return
 
 def 计算总共帧数(片段列表, 片段速度):
@@ -372,7 +373,7 @@ def ffmpeg和pyav综合处理视频流(文件, 临时视频文件, 片段列表,
     开始时间 = time.time()
     视频帧序号 = 0
     index = 0
-    for packet in input_.demux(inputVideoStream):
+    for packet in tqdm(input_.demux(inputVideoStream), total=总帧数):
         for frame in packet.decode():
             frame = frame.reformat()
             index += 1
@@ -397,9 +398,9 @@ def ffmpeg和pyav综合处理视频流(文件, 临时视频文件, 片段列表,
                         return False
 
                 输出等效 += 1
-                if 输出等效 % 200 == 0:
-                    print(
-                        f'帧速：{int(int(输出等效) / max(time.time() - 开始时间, 1))}, 剩余：{总帧数 - int(输出等效)} 帧，剩余时间：{秒数转时分秒(int((总帧数 - int(输出等效)) / max(1, int(输出等效) / max(time.time() - 开始时间, 1))))}    ')
+                # if 输出等效 % 200 == 0:
+                #     print(
+                #         f'帧速：{int(int(输出等效) / max(time.time() - 开始时间, 1))}, 剩余：{总帧数 - int(输出等效)} 帧，剩余时间：{秒数转时分秒(int((总帧数 - int(输出等效)) / max(1, int(输出等效) / max(time.time() - 开始时间, 1))))}    ')
     process2.stdin.close()
     process2.wait()
     del process2
@@ -517,10 +518,10 @@ def 跳剪(文件,
         ...
     except Exception as e:
         print(f'删除临时文件夹失败，可能是被占用导致，请手动删除：\n    {临时文件夹}')
-    if platform.system() == 'Windows':
-        os.system(f'explorer /select, "{Path(输出文件)}')
-    else:
-        os.startfile(Path(输出文件).parent)
+    # if platform.system() == 'Windows':
+    #     os.system(f'explorer /select, "{Path(输出文件)}')
+    # else:
+    #     os.startfile(Path(输出文件).parent)
     print(f'总共耗时：{秒数转时分秒(time.time() - 开始时间)}')
     return
 
